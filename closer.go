@@ -1,6 +1,7 @@
 package closer
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -37,6 +38,7 @@ func (c *closer) Hold() {
 			for _, fn := range c.ctrlC {
 				fn()
 			}
+			fmt.Println("test")
 			return
 		default:
 			// pass
