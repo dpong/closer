@@ -21,7 +21,7 @@ func NewCloser() *closer {
 func (c *closer) Hold() {
 	ch := make(chan os.Signal, 1)
 	end := make(chan string)
-	signal.Notify(ch, syscall.SIGQUIT, syscall.SIGINT)
+	signal.Notify(ch, syscall.SIGQUIT, os.Interrupt)
 	go func() {
 		for {
 			s := <-ch
@@ -34,7 +34,7 @@ func (c *closer) Hold() {
 				}
 				end <- "done"
 				return
-			case syscall.SIGINT: // pres ctrl + c
+			case os.Interrupt: // pres ctrl + c
 				c.Lock()
 				defer c.Unlock()
 				for _, fn := range c.ctrlC {
