@@ -38,7 +38,6 @@ func (c *closer) Hold() {
 			for _, fn := range c.ctrlC {
 				fn()
 			}
-			fmt.Println("test")
 			return
 		default:
 			// pass
