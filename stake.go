@@ -1,3 +1,6 @@
+// SEE https://github.com/bugsnag/bugsnag-go/blob/master/errors/stackframe.go
+// for the origin of this code
+
 package closer
 
 import (
