@@ -39,10 +39,11 @@ func (c *closer) Hold() {
 			case os.Interrupt: // pres ctrl + c
 				c.Lock()
 				defer c.Unlock()
-				fmt.Println("wtf")
+
 				for _, fn := range c.ctrlC {
 					fn()
 				}
+				fmt.Println("wtf")
 				end <- "done"
 				return
 			default:
