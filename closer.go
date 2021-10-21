@@ -1,7 +1,6 @@
 package closer
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"sync"
