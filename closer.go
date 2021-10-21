@@ -89,9 +89,9 @@ func (c *closer) wait() {
 	case sig := <-c.signalChan:
 		switch sig {
 		case syscall.SIGQUIT: // press ctrl + \
-			way = "c"
-		case os.Interrupt: // pres ctrl + c
 			way = "slash"
+		case syscall.SIGINT: // pres ctrl + c
+			way = "c"
 		}
 	case <-c.closeChan:
 		break
