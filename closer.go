@@ -20,29 +20,33 @@ func NewCloser() *closer {
 
 func (c *closer) Hold() {
 	ch := make(chan os.Signal, 1)
+	end := make(chan string)
 	signal.Notify(ch, syscall.SIGQUIT, syscall.SIGINT)
-	for {
-		s := <-ch
-		switch s {
-		case syscall.SIGQUIT: // press ctrl + \
-			c.Lock()
-			defer c.Unlock()
-			for _, fn := range c.ctrlSlash {
-				fn()
+	go func() {
+		for {
+			s := <-ch
+			switch s {
+			case syscall.SIGQUIT: // press ctrl + \
+				c.Lock()
+				defer c.Unlock()
+				for _, fn := range c.ctrlSlash {
+					fn()
+				}
+				end <- "done"
+				return
+			case syscall.SIGINT: // pres ctrl + c
+				c.Lock()
+				defer c.Unlock()
+				for _, fn := range c.ctrlC {
+					fn()
+				}
+				end <- "done"
+				return
+			default:
+				// pass
 			}
-			return
-		case syscall.SIGINT: // pres ctrl + c
-			c.Lock()
-			defer c.Unlock()
-			for _, fn := range c.ctrlC {
-				fn()
-			}
-			return
-		default:
-			// pass
 		}
-	}
-	end := make(chan struct{})
+	}()
 	<-end
 }
 
