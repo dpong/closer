@@ -44,6 +44,8 @@ func (c *closer) Hold() {
 			// pass
 		}
 	}
+	end := make(chan struct{})
+	<-end
 }
 
 func (c *closer) CtrlPlusCBind(cleanup func()) {
