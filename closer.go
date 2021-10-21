@@ -79,6 +79,7 @@ func newCloser() *closer {
 }
 
 func (c *closer) wait() {
+	var way string
 	exitCode := c.codeOK
 
 	// wait for a close request
@@ -88,17 +89,9 @@ func (c *closer) wait() {
 	case sig := <-c.signalChan:
 		switch sig {
 		case syscall.SIGQUIT: // press ctrl + \
-			c.sem.Lock()
-			defer c.sem.Unlock()
-			for _, fn := range c.ctrlSlash {
-				fn()
-			}
+			way = "c"
 		case os.Interrupt: // pres ctrl + c
-			c.sem.Lock()
-			defer c.sem.Unlock()
-			for _, fn := range c.ctrlC {
-				fn()
-			}
+			way = "slash"
 		}
 	case <-c.closeChan:
 		break
@@ -109,6 +102,22 @@ func (c *closer) wait() {
 	// ensure we'll exit
 	defer os.Exit(exitCode)
 
+	c.sem.Lock()
+	defer c.sem.Unlock()
+	switch way {
+	case "c":
+		for _, fn := range c.ctrlC {
+			fn()
+		}
+	case "slash":
+		for _, fn := range c.ctrlSlash {
+			fn()
+		}
+	}
+
+	for _, fn := range c.ctrlSlash {
+		fn()
+	}
 	// done!
 	close(c.doneChan)
 }
