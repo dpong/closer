@@ -14,6 +14,8 @@ import (
 var (
 	DebugSignalSet = []os.Signal{
 		syscall.SIGINT,
+		syscall.SIGHUP,
+		syscall.SIGTERM,
 		syscall.SIGQUIT,
 	}
 	DefaultSignalSet = append(DebugSignalSet, syscall.SIGABRT)
