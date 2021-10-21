@@ -12,12 +12,15 @@ import (
 )
 
 var (
+	// DebugSignalSet is a predefined list of signals to watch for. Usually
+	// these signals will terminate the app without executing the code in defer blocks.
 	DebugSignalSet = []os.Signal{
 		syscall.SIGINT,
 		syscall.SIGHUP,
 		syscall.SIGTERM,
-		syscall.SIGQUIT,
 	}
+	// DefaultSignalSet will have syscall.SIGABRT that should be
+	// opted out if user wants to debug the stacktrace.
 	DefaultSignalSet = append(DebugSignalSet, syscall.SIGABRT)
 )
 
@@ -45,8 +48,7 @@ type closer struct {
 	signals    []os.Signal
 	sem        sync.Mutex
 	closeOnce  sync.Once
-	ctrlC      []func()
-	ctrlSlash  []func()
+	cleanups   []func()
 	errChan    chan struct{}
 	doneChan   chan struct{}
 	signalChan chan os.Signal
@@ -79,20 +81,13 @@ func newCloser() *closer {
 }
 
 func (c *closer) wait() {
-	var way string
 	exitCode := c.codeOK
 
 	// wait for a close request
 	select {
 	case <-c.cancelWaitChan:
 		return
-	case sig := <-c.signalChan:
-		switch sig {
-		case syscall.SIGQUIT: // press ctrl + \
-			way = "slash"
-		case syscall.SIGINT: // pres ctrl + c
-			way = "c"
-		}
+	case <-c.signalChan:
 	case <-c.closeChan:
 		break
 	case <-c.errChan:
@@ -104,18 +99,7 @@ func (c *closer) wait() {
 
 	c.sem.Lock()
 	defer c.sem.Unlock()
-	switch way {
-	case "c":
-		for _, fn := range c.ctrlC {
-			fn()
-		}
-	case "slash":
-		for _, fn := range c.ctrlSlash {
-			fn()
-		}
-	}
-
-	for _, fn := range c.ctrlSlash {
+	for _, fn := range c.cleanups {
 		fn()
 	}
 	// done!
@@ -213,21 +197,27 @@ func (c *closer) closeErr() {
 	<-c.doneChan
 }
 
-func CtrlPlusCBind(cleanup func()) {
+// Init allows user to override the defaults (a set of OS signals to watch for, for example).
+func Init(cfg Config) {
 	c.sem.Lock()
-	// store in the reverse order
-	s := make([]func(), 0, 1+len(c.ctrlC))
-	s = append(s, cleanup)
-	c.ctrlC = append(s, c.ctrlC...)
+	signal.Stop(c.signalChan)
+	close(c.cancelWaitChan)
+	c.codeOK = cfg.ExitCodeOK
+	c.codeErr = cfg.ExitCodeErr
+	c.signals = cfg.ExitSignals
+	signal.Notify(c.signalChan, c.signals...)
+	go c.wait()
 	c.sem.Unlock()
 }
 
-func CtrlPlusSlashBind(cleanup func()) {
+// Bind will register the cleanup function that will be called when closer will get a close request.
+// All the callbacks will be called in the reverse order they were bound, that's similar to how `defer` works.
+func Bind(cleanup func()) {
 	c.sem.Lock()
 	// store in the reverse order
-	s := make([]func(), 0, 1+len(c.ctrlSlash))
+	s := make([]func(), 0, 1+len(c.cleanups))
 	s = append(s, cleanup)
-	c.ctrlSlash = append(s, c.ctrlSlash...)
+	c.cleanups = append(s, c.cleanups...)
 	c.sem.Unlock()
 }
 
