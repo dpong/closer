@@ -1,6 +1,7 @@
 package closer
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -22,6 +23,7 @@ func (c *closer) Hold() {
 	ch := make(chan os.Signal, 1)
 	end := make(chan string)
 	signal.Notify(ch, syscall.SIGQUIT, os.Interrupt)
+	defer signal.Stop(ch)
 	go func() {
 		for {
 			s := <-ch
@@ -37,6 +39,7 @@ func (c *closer) Hold() {
 			case os.Interrupt: // pres ctrl + c
 				c.Lock()
 				defer c.Unlock()
+				fmt.Println("wtf")
 				for _, fn := range c.ctrlC {
 					fn()
 				}
